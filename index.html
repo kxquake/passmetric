@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PassMetric</title>
+</head>
+<body>
+    <h1>PassMetric</h1>
+    <p id="status">Checking API...</p>
+
+    <script>
+        fetch('/api/hello')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('status').textContent = data.message;
+            })
+            .catch(err => {
+                document.getElementById('status').textContent = 'API error: ' + err;
+            });
+    </script>
+
+<input type="text" id="password-input" placeholder="Type a password">
+<button onclick="analyzePassword()">Analyze</button>
+<pre id="result"></pre>
+
+<script>
+async function analyzePassword() {
+    const password = document.getElementById('password-input').value;
+
+    const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password })
+    });
+
+    const data = await response.json();
+    document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+}
+
+</script>
+
+
+<button onclick="generate_Password()">Generate Password</button>
+<pre id="generate-result"></pre>
+
+<script>
+    //TODO: create a button that generates a password and displays it in the result section
+async function generate_Password() {
+    const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requirements: { length: 12, include_uppercase: true, include_lowercase: true, include_digits: true, include_symbols: true } })
+    });
+
+    const data = await response.json();
+    document.getElementById('generate-result').textContent = data.password;
+}
+
+</script>
+</body>
+</html>
