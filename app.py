@@ -6,7 +6,7 @@ import base64
 from flask import Flask, session, request, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import VerifyMismatchError, VerificationError
 from combinedAnalyzer import CombinedPasswordAnalyzer
 from passGen import PasswordGenerator, PasswordRequirements
 from models import db, User, VaultEntry
@@ -29,18 +29,43 @@ analyzer = CombinedPasswordAnalyzer()
 generator = PasswordGenerator()
 
 
-app.config['SECRET_KEY'] = secrets.token_hex(32)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///passmetric.db'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SECRET_KEY_FILE = os.path.join(BASE_DIR, '.secret_key')
+ 
+def get_or_create_secret_key():
+    """Load existing secret key from file, or generate and save a new one."""
+    if os.path.exists(SECRET_KEY_FILE):
+        with open(SECRET_KEY_FILE, 'r') as f:
+            key = f.read().strip()
+            if key:  # Make sure it's not empty
+                return key
+    # Generate a new key and save it
+    key = secrets.token_hex(32)
+    with open(SECRET_KEY_FILE, 'w') as f:
+        f.write(key)
+    return key
+ 
+app.config['SECRET_KEY'] = get_or_create_secret_key()
+
+DB_PATH = os.path.join(BASE_DIR, 'passmetric.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + DB_PATH
+ 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+ 
 db.init_app(app)
-
+ 
 with app.app_context():
     db.create_all()
+
 
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'indexx.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return send_from_directory(app.static_folder, 'dashboard.html')
 
 
 @app.route('/api/hello', methods=['GET'])
@@ -121,15 +146,25 @@ def login():
         ph.verify(user.master_password_hash, master_password)
     except VerifyMismatchError:
         return jsonify({'error': 'Invalid email or password'}), 401
-
+    except (VerificationError, Exception) as e:
+        # Hash is corrupted or unreadable — log it for debugging
+        print(f"[AUTH ERROR] Hash verification failed for {email}: {type(e).__name__}: {e}")
+        return jsonify({'error': 'Invalid email or password'}), 401
+ 
+    # If argon2 says the hash needs rehashing (param upgrade), do it now
+    if ph.check_needs_rehash(user.master_password_hash):
+        user.master_password_hash = ph.hash(master_password)
+        db.session.commit()
+ 
     # Derive vault encryption key and store in session
     vault_salt = base64.b64decode(user.vault_salt)
     vault_key = CryptManager.derive_key(master_password, vault_salt)
-
+ 
     login_user(user)
     session['vault_key'] = base64.b64encode(vault_key).decode('utf-8')
-
+ 
     return jsonify({'message': 'Logged in', 'email': email}), 200
+
 
 @app.route('/api/auth/logout', methods=['POST'])
 @login_required
@@ -306,6 +341,13 @@ def search_entries():
 
     return jsonify({'entries': results}), 200
 
+#CLEAR all VAULT ENTRIES
+@app.route('/api/vault/clear', methods=['POST'])
+@login_required
+def clear_vault():
+    VaultEntry.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    return jsonify({'message': 'Vault cleared'}), 200
 
 #Route for generating passphrase
 @app.route('/api/tools/generate-passphrase', methods=['POST'])

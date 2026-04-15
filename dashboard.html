@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassMetric — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <!-- ═══════════════ SIDEBAR ═══════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">P</div>
+            <span class="logo-text">PassMetric</span>
+        </div>
+
+        <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+        </button>
+
+        <nav class="sidebar-nav" id="sidebar-nav">
+            <button class="nav-btn active" data-page="overview">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                <span>Overview</span>
+            </button>
+            <button class="nav-btn" data-page="vault">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <span>Vault</span>
+            </button>
+            <button class="nav-btn" data-page="generator">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/></svg>
+                <span>Generator</span>
+            </button>
+            <button class="nav-btn" data-page="analyzer">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <span>Analyzer</span>
+            </button>
+            <button class="nav-btn" data-page="health">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span>Health Audit</span>
+            </button>
+            <button class="nav-btn" data-page="settings">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <span>Settings</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info" id="user-info">
+                <div class="user-avatar" id="user-avatar">A</div>
+                <div class="user-details">
+                    <span class="user-email" id="user-email">Loading...</span>
+                    <span class="user-status">Vault Unlocked</span>
+                </div>
+            </div>
+            <button class="nav-btn signout-btn" id="signout-btn">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+
+    <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+    <main class="main-content" id="main-content">
+
+        <!-- ─── OVERVIEW PAGE ─── -->
+        <section class="page active" id="page-overview">
+            <div class="page-header">
+                <h2>Welcome back</h2>
+                <p class="page-subtitle">Here's your vault security overview</p>
+            </div>
+
+            <div class="stats-grid" id="overview-stats">
+                <!-- Filled by JS -->
+            </div>
+
+            <div class="overview-body">
+                <div class="card health-ring-card">
+                    <div class="score-ring-wrap" id="overview-ring">
+                        <!-- SVG ring injected by JS -->
+                    </div>
+                    <div class="ring-label" id="overview-ring-label">—</div>
+                    <div class="ring-sublabel">Vault Health Score</div>
+                </div>
+
+                <div class="card distribution-card">
+                    <h4 class="card-title">Strength Distribution</h4>
+                    <div id="overview-distribution">
+                        <!-- Filled by JS -->
+                    </div>
+                    <div class="alert-box" id="overview-alert"></div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ─── VAULT PAGE ─── -->
+        <section class="page" id="page-vault">
+            <div class="page-header">
+                <div>
+                    <h2>Password Vault</h2>
+                    <p class="page-subtitle" id="vault-count">0 stored credentials</p>
+                </div>
+                <button class="btn btn-primary" id="vault-add-btn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    Add Password
+                </button>
+            </div>
+
+            <div class="search-bar">
+                <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="vault-search" placeholder="Search vault..." autocomplete="off">
+            </div>
+
+            <div class="entry-list" id="vault-list">
+                <!-- Filled by JS -->
+            </div>
+        </section>
+
+
+        <!-- ─── GENERATOR PAGE ─── -->
+        <section class="page" id="page-generator">
+            <div class="page-header">
+                <h2>Password Generator</h2>
+                <p class="page-subtitle">Generate cryptographically secure passwords</p>
+            </div>
+
+            <div class="gen-mode-toggle">
+                <button class="mode-btn active" data-mode="password">Password</button>
+                <button class="mode-btn" data-mode="passphrase">Passphrase</button>
+            </div>
+
+            <div class="card gen-output-card">
+                <div class="gen-output" id="gen-output">—</div>
+                <div class="strength-bar-wrap" id="gen-strength-bar"></div>
+                <div class="gen-output-footer">
+                    <span class="gen-strength-label" id="gen-strength-label">—</span>
+                    <div class="gen-actions">
+                        <button class="btn btn-secondary btn-sm" id="gen-copy-btn">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            Copy
+                        </button>
+                        <button class="btn btn-primary btn-sm" id="gen-regen-btn">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/></svg>
+                            Regenerate
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password options -->
+            <div class="card gen-options" id="gen-password-opts">
+                <h4 class="card-title">Options</h4>
+                <div class="range-row">
+                    <span class="range-label">Length</span>
+                    <span class="range-value" id="gen-length-val">16</span>
+                </div>
+                <input type="range" id="gen-length" min="8" max="64" value="16" class="range-input">
+                <label class="checkbox-row"><input type="checkbox" id="gen-upper" checked> Uppercase (A–Z)</label>
+                <label class="checkbox-row"><input type="checkbox" id="gen-lower" checked> Lowercase (a–z)</label>
+                <label class="checkbox-row"><input type="checkbox" id="gen-digits" checked> Digits (0–9)</label>
+                <label class="checkbox-row"><input type="checkbox" id="gen-symbols" checked> Symbols (!@#$)</label>
+                <button class="btn btn-primary btn-block" id="gen-go-password">Generate Password</button>
+            </div>
+
+            <!-- Passphrase options -->
+            <div class="card gen-options hidden" id="gen-passphrase-opts">
+                <h4 class="card-title">Options</h4>
+                <div class="range-row">
+                    <span class="range-label">Word Count</span>
+                    <span class="range-value" id="gen-words-val">4</span>
+                </div>
+                <input type="range" id="gen-words" min="3" max="8" value="4" class="range-input">
+                <div class="field">
+                    <label class="field-label">Separator</label>
+                    <input type="text" id="gen-separator" value="-" class="field-input field-input-sm">
+                </div>
+                <label class="checkbox-row"><input type="checkbox" id="gen-capitalize" checked> Capitalize Words</label>
+                <label class="checkbox-row"><input type="checkbox" id="gen-addnum" checked> Append Number</label>
+                <button class="btn btn-primary btn-block" id="gen-go-passphrase">Generate Passphrase</button>
+            </div>
+        </section>
+
+
+        <!-- ─── ANALYZER PAGE ─── -->
+        <section class="page" id="page-analyzer">
+            <div class="page-header">
+                <h2>Password Analyzer</h2>
+                <p class="page-subtitle">Test any password's strength with rule-based &amp; ML analysis</p>
+            </div>
+
+            <div class="analyzer-input-row">
+                <input type="text" id="analyzer-input" placeholder="Enter a password to analyze..." class="analyzer-field" autocomplete="off">
+                <button class="btn btn-primary" id="analyzer-go-btn">Analyze</button>
+            </div>
+
+            <div id="analyzer-results" class="hidden">
+                <div class="analyzer-body">
+                    <div class="card analyzer-ring-card">
+                        <div class="score-ring-wrap" id="analyzer-ring"></div>
+                        <div class="ring-label" id="analyzer-ring-label">—</div>
+                        <div class="analyzer-stats" id="analyzer-stats"></div>
+                    </div>
+                    <div class="analyzer-feedback" id="analyzer-feedback"></div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ─── HEALTH AUDIT PAGE ─── -->
+        <section class="page" id="page-health">
+            <div class="page-header">
+                <h2>Health Audit</h2>
+                <p class="page-subtitle">Security assessment of all vault passwords</p>
+            </div>
+
+            <div class="stats-grid stats-grid-3" id="health-stats"></div>
+
+            <div class="card audit-table-card">
+                <div class="audit-table-header">
+                    <span>Website</span>
+                    <span>Username</span>
+                    <span>Score</span>
+                    <span>Strength</span>
+                </div>
+                <div id="audit-table-body"></div>
+            </div>
+        </section>
+
+
+        <!-- ─── SETTINGS PAGE ─── -->
+        <section class="page" id="page-settings">
+            <div class="page-header">
+                <h2>Settings</h2>
+                <p class="page-subtitle">Manage your account and security preferences</p>
+            </div>
+
+            <!-- Account -->
+            <div class="card settings-section">
+                <h4 class="card-title">Account</h4>
+                <div class="field">
+                    <label class="field-label">Email Address</label>
+                    <input type="email" id="settings-email" class="field-input" placeholder="your@email.com">
+                </div>
+                <button class="btn btn-secondary btn-sm" id="settings-email-btn">Update Email</button>
+            </div>
+
+            <!-- Master password -->
+            <div class="card settings-section">
+                <h4 class="card-title">Change Master Password</h4>
+                <div class="field">
+                    <label class="field-label">Current Master Password</label>
+                    <input type="password" id="settings-cur-pwd" class="field-input">
+                </div>
+                <div class="field">
+                    <label class="field-label">New Master Password</label>
+                    <input type="password" id="settings-new-pwd" class="field-input">
+                </div>
+                <div class="field">
+                    <label class="field-label">Confirm New Password</label>
+                    <input type="password" id="settings-confirm-pwd" class="field-input">
+                </div>
+                <button class="btn btn-primary" id="settings-pwd-btn">Update Password</button>
+            </div>
+
+            <!-- Security -->
+            <div class="card settings-section">
+                <h4 class="card-title">Security</h4>
+                <div class="field">
+                    <label class="field-label">Auto-lock Vault</label>
+                    <select id="settings-autolock" class="field-select">
+                        <option value="5">5 minutes</option>
+                        <option value="15" selected>15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="never">Never</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Clear Clipboard After</label>
+                    <select id="settings-clipboard" class="field-select">
+                        <option value="10">10 seconds</option>
+                        <option value="30" selected>30 seconds</option>
+                        <option value="60">60 seconds</option>
+                        <option value="never">Never</option>
+                    </select>
+                </div>
+            </div>
+
+    
+            <!-- Danger zone -->
+            <div class="card settings-section danger-zone">
+                <h4 class="card-title danger-title">Danger Zone</h4>
+                <p class="settings-desc">Permanently delete your account and all vault data. This action cannot be undone.</p>
+                <button class="btn btn-danger btn-sm" id="settings-delete-btn">Delete Account</button>
+                <button class="btn btn-danger btn-sm" id="settings-clear-btn">Clear Vaults</button>
+            </div>
+        </section>
+
+    </main>
+
+
+    <!-- ═══════════════ MODALS ═══════════════ -->
+
+    <!-- Add / Edit entry modal -->
+    <div class="modal-overlay hidden" id="modal-entry">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-entry-title">Add Password</h3>
+                <button class="modal-close" data-close="modal-entry">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="field">
+                    <label class="field-label">Website</label>
+                    <input type="text" id="entry-website" class="field-input" placeholder="e.g. github.com">
+                </div>
+                <div class="field">
+                    <label class="field-label">Username / Email</label>
+                    <input type="text" id="entry-username" class="field-input" placeholder="e.g. alex@email.com">
+                </div>
+                <div class="field">
+                    <label class="field-label">Password</label>
+                    <input type="text" id="entry-password" class="field-input mono" placeholder="Enter password" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label class="field-label">Notes (optional)</label>
+                    <input type="text" id="entry-notes" class="field-input" placeholder="Any notes...">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" data-close="modal-entry">Cancel</button>
+                    <button class="btn btn-primary" id="entry-save-btn">Add to Vault</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete confirm modal -->
+    <div class="modal-overlay hidden" id="modal-delete">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Delete Entry</h3>
+                <button class="modal-close" data-close="modal-delete">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-text">Are you sure you want to delete the entry for <strong id="delete-target">—</strong>? This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" data-close="modal-delete">Cancel</button>
+                    <button class="btn btn-danger" id="delete-confirm-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sign out confirm modal -->
+    <div class="modal-overlay hidden" id="modal-signout">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Sign Out</h3>
+                <button class="modal-close" data-close="modal-signout">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="signout-info">
+                    <div class="signout-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                    </div>
+                    <div>
+                        <p class="modal-text">Are you sure you want to sign out?</p>
+                        <p class="modal-subtext">Your vault will be locked and the encryption key cleared from memory.</p>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" data-close="modal-signout">Cancel</button>
+                    <button class="btn btn-danger" id="signout-confirm-btn">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clear Vaults confirm modal -->
+    <div class="modal-overlay hidden" id="modal-clear">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Clear Vaults</h3>
+                <button class="modal-close" data-close="modal-clear">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-text">Are you sure you want to clear all vault entries?</p>
+                <p class="modal-subtext">This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" data-close="modal-clear">Cancel</button>
+                    <button class="btn btn-danger" id="clear-confirm-btn">Clear Vaults</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sign out confirm modal -->
+    <div class="modal-overlay hidden" id="modal-signout">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Sign Out</h3>
+                <button class="modal-close" data-close="modal-signout">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="signout-info">
+                    <div class="signout-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                    </div>
+                    <div>
+                        <p class="modal-text">Are you sure you want to sign out?</p>
+                        <p class="modal-subtext">Your vault will be locked and the encryption key cleared from memory.</p>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" data-close="modal-signout">Cancel</button>
+                    <button class="btn btn-danger" id="signout-confirm-btn">Sign Out</button>
+
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+
+    <!-- Scripts — api.js is your existing helper -->
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
