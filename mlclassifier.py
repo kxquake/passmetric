@@ -112,7 +112,8 @@ class PasswordMLClassifier:
         features_list = []
         labels_list = []
 
-        rockyou_path = 'rockyou.txt'
+        # Look for rockyou.txt alongside this file in backend/
+        rockyou_path = os.path.join(os.path.dirname(__file__), 'rockyou.txt')
 
         #check if rockyou.txt exists
         if not os.path.exists(rockyou_path):
@@ -290,4 +291,3 @@ class PasswordMLClassifier:
         confidence = probabilities[prediction]
         
         return self.label_mapping[prediction], confidence
-    

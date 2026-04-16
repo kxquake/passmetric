@@ -117,6 +117,7 @@
         if (page === 'vault')     renderVault();
         if (page === 'health')    renderHealthAudit();
         if (page === 'settings')  renderSettings();
+        if (page === 'breach')    renderBreachPage();
     }
 
 
@@ -198,6 +199,19 @@
         const entries = state.entries;
         const audit = state.audit;
         if (!audit) return;
+
+        // ── Handle empty vault ──
+        if (entries.length === 0) {
+            renderScoreRing($('#overview-ring'), 0, 140, 10);
+            const ringLabel = $('#overview-ring-label');
+            ringLabel.textContent = 'N/A';
+            ringLabel.style.color = 'var(--text-muted)';
+
+            const alert = $('#overview-alert');
+            alert.className = 'alert-box info';  // neutral style
+            alert.textContent = 'Add passwords to see your vault health score.';
+            return;
+        }
 
         const weak   = entries.filter(e => e.score < 40).length;
         const strong = entries.filter(e => e.score >= 80).length;
@@ -486,6 +500,32 @@
         if (!fb) fb = '<div class="feedback-block recs"><div class="feedback-title recs">Looking good!</div><div class="feedback-item">No issues detected.</div></div>';
 
         $('#analyzer-feedback').innerHTML = fb;
+
+        // ── Breach status ──
+        const breachSection = $('#analyzer-breach');
+        if (breachSection && analysis.breach) {
+            if (analysis.breach.is_breached) {
+                breachSection.innerHTML = `
+                    <div class="breach-alert danger">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                        </svg>
+                        <div>
+                            <strong>Breached password!</strong>
+                            <p>${analysis.breach.message}</p>
+                        </div>
+                    </div>`;
+            } else {
+                breachSection.innerHTML = `
+                    <div class="breach-alert safe">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <span>Not found in ${(analysis.breach.dataset_size || 0).toLocaleString()} known leaked passwords</span>
+                    </div>`;
+            }
+            show(breachSection);
+        }
     }
 
     function countTypes(pwd) {
@@ -554,6 +594,100 @@
         $('#audit-table-body').innerHTML = rows || '<div class="entry-empty">No entries to audit</div>';
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  RENDER: DATA BREACH
+    // ═══════════════════════════════════════════════════════════════════
+
+    async function checkSingleBreach() {
+    const pwd = $('#breach-input').value;
+    if (!pwd) { toast('Enter a password to check', 'error'); return; }
+
+    const resultDiv = $('#breach-single-result');
+    try {
+        const data = await API.post('/tools/breach-check', { password: pwd });
+
+        if (data.is_breached) {
+            resultDiv.innerHTML = `
+                <div class="breach-alert danger">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                    </svg>
+                    <div>
+                        <strong>Password found in data breach!</strong>
+                        <p>${data.message}</p>
+                    </div>
+                </div>`;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="breach-alert safe">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26
+                        9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59
+                        L18 9l-8 8z"/>
+                    </svg>
+                    <span>This password was <strong>not found</strong> in
+                    ${(data.dataset_size || 0).toLocaleString()} known breached passwords.</span>
+                </div>`;
+        }
+        show(resultDiv);
+    } catch (err) {
+        toast(err.message || 'Breach check failed', 'error');
+    }
+    }
+
+    async function scanVaultBreaches() {
+    const summaryDiv = $('#breach-scan-summary');
+    const resultsDiv = $('#breach-scan-results');
+
+    resultsDiv.innerHTML = '<p style="color:var(--text-muted)">Scanning...</p>';
+
+    try {
+        const data = await API.get('/tools/breach-check-vault');
+
+        // Summary banner
+        if (data.breached_count > 0) {
+            summaryDiv.innerHTML = `
+                <div class="breach-alert danger" style="margin-bottom:16px">
+                    <strong>${data.breached_count} of ${data.total} password${data.total > 1 ? 's' : ''}
+                    found in data breaches.</strong>
+                    <p>Change these passwords immediately.</p>
+                </div>`;
+        } else {
+            summaryDiv.innerHTML = `
+                <div class="breach-alert safe" style="margin-bottom:16px">
+                    <strong>None of your ${data.total} passwords were found in known breaches.</strong>
+                </div>`;
+        }
+        show(summaryDiv);
+
+        // Results table
+        if (data.entries.length === 0) {
+            resultsDiv.innerHTML = '<p style="color:var(--text-muted)">No vault entries to scan.</p>';
+            return;
+        }
+
+        resultsDiv.innerHTML = `
+            <div class="audit-table-header">
+                <span>Website</span>
+                <span>Username</span>
+                <span>Status</span>
+            </div>
+            ${data.entries.map(e => `
+                <div class="audit-row ${e.is_breached ? 'breached' : ''}">
+                    <span>${esc(e.website)}</span>
+                    <span>${esc(e.username)}</span>
+                    <span class="${e.is_breached ? 'text-danger' : 'text-safe'}">
+                        ${e.is_breached ? '⚠️ Breached' : '✓ Safe'}
+                    </span>
+                </div>
+            `).join('')}`;
+
+    } catch (err) {
+        toast(err.message || 'Vault scan failed', 'error');
+        resultsDiv.innerHTML = '';
+    }
+    }
+
 
     // ═══════════════════════════════════════════════════════════════════
     //  RENDER: SETTINGS
@@ -599,9 +733,16 @@
         const notes    = $('#entry-notes').value.trim();
 
         if (!website || !username || !password) {
+        toast('Please fill in all required fields', 'error');
+        return;
+    }
+
+        if (!website || !username || !password) {
             toast('Website, username, and password are required', 'error');
             return;
         }
+
+        
 
         try {
             if (state.editingEntryId) {
@@ -610,8 +751,13 @@
                 toast('Entry updated');
             } else {
                 // CREATE
-                await API.post('/vault/entries', { website, username, password, notes });
-                toast('Password added to vault');
+                const data = await API.post('/vault/entries', { website, username, password, notes });
+                // Show breach warning if returned
+                if (data.breach_warning) {
+                    toast('⚠️ Warning: This password was found in a data breach!', 'warning');
+                } else {
+                    toast('Password added to vault');
+                }
             }
             await loadVaultEntries();
             await loadHealthAudit();
@@ -721,6 +867,7 @@
             if (action === 'copy') {
                 const entry = state.entries.find(e => e.entry_id === id);
                 if (entry) copyToClipboard(entry.password);
+                toast('Password copied to clipboard');
             }
             if (action === 'edit')   openEditModal(id);
             if (action === 'delete') openDeleteModal(id);
@@ -763,6 +910,13 @@
         $('#analyzer-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') analyzePassword();
         });
+
+        // ─── Data Breach ───
+        $('#breach-check-btn').addEventListener('click', checkSingleBreach);
+        $('#breach-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkSingleBreach();
+        });
+        $('#breach-scan-btn').addEventListener('click', scanVaultBreaches);
 
         // ─── Settings ───
         $('#settings-email-btn').addEventListener('click', () => toast('Email update not yet implemented', 'info'));

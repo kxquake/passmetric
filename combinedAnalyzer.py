@@ -29,21 +29,45 @@ class CombinedAnalysis:
 # Combined Analyzer Class that integrates all components into a single interface for comprehensive password analysis and generation.
 class CombinedPasswordAnalyzer:
     
-    def __init__(self):
-        """Initialize all components."""
-        self.generator = PasswordGenerator()
+    def __init__(self, model_path: str = 'password_ml_model.pkl'):
+        """Initialize all components with auto-loading ML model."""
         self.evaluator = PasswordEvaluator()
+        self.generator = PasswordGenerator()
         self.ml_classifier = PasswordMLClassifier()
         
-        # Try to load pre-trained model
-        try:
-            self.ml_classifier.load_model("password_ml_model.pkl")
-        except:
-            # Model not found or not trained yet
-            self.ml_classifier.is_trained = False
+        # ── Auto-load or auto-train the ML model ──
+        self._model_path = model_path
+        self._auto_load_ml_model()
+
+    def _auto_load_ml_model(self):
+        """Load saved model if it exists, otherwise train and save."""
+        import os
+        if os.path.exists(self._model_path):
+            try:
+                self.ml_classifier.load_model(self._model_path)
+                print(f"[ML] Model loaded from {self._model_path}")
+                return
+            except Exception as e:
+                print(f"[ML] Failed to load model: {e}")
+
+        # Look for rockyou.txt alongside this file in backend/
+        rockyou_path = os.path.join(os.path.dirname(__file__), 'rockyou.txt')
+        if os.path.exists(rockyou_path):
+            print("[ML] No saved model found. Training from RockYou dataset...")
+            try:
+                self.ml_classifier.train()
+                self.ml_classifier.save_model(self._model_path)
+                print(f"[ML] Model trained and saved to {self._model_path}")
+            except Exception as e:
+                print(f"[ML] Training failed: {e}. ML predictions unavailable.")
+        else:
+            print("[ML] No model or dataset found. ML predictions unavailable.")
     
 
-    def analyze_password(self, password: str, include_ml: bool = True) -> Dict:
+    def analyze_password(self, password: str, include_ml: bool = None) -> Dict:
+        if include_ml is None:
+            include_ml = self.ml_classifier.is_trained
+            
         # Rule-based evaluation (always works)
         rule_result = self.evaluator.evaluate_password(password)
         

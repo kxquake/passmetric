@@ -165,6 +165,14 @@ class PasswordEvaluator:
         details['entropy_bits'] = entropy
         details['character_diversity'] = diversity
         details['score'] = score
+
+        seen = set()
+        unique_recs = []
+        for r in recommendations:
+            if r not in seen:
+                seen.add(r)
+                unique_recs.append(r)
+        recommendations = unique_recs
         
         return self._create_result(
             password=password,
@@ -334,19 +342,44 @@ class PasswordEvaluator:
         
         return result
     
-    def _check_leet_speak(self, password: str) -> Dict:
-        # Check for common l33t speak substitutions (e.g., "p@ssw0rd" for "password")
+    def _check_leet_speak(self, password: str) -> Dict:#
         result = {'leet_speak_found': [], 'warnings': [], 'recommendations': []}
-        password_lower = password.lower()
-        
+
+        # Build the "de-l33ted" version of the password
+        reverse_leet = {}
         for char, subs in self.LEET_SPEAK.items():
             for sub in subs:
-                if sub in password_lower:
-                    result['leet_speak_found'].append(f"{char} -> {sub}")
-                    result['warnings'].append(f"Contains l33t speak substitution: '{char}' replaced with '{sub}'")
-                    result['recommendations'].append("Avoid common l33t substitutions as they are well-known to attackers")
+             reverse_leet[sub] = char
+
+        de_leeted = ''
+        for ch in password.lower():
+            de_leeted += reverse_leet.get(ch, ch)
+
+    # Only flag if the de-l33ted version contains a dictionary word (4+ chars)
+        found_words = []
+        for length in range(4, len(de_leeted) + 1):
+            for start in range(len(de_leeted) - length + 1):
+                candidate = de_leeted[start:start + length]
+                if candidate in common_words or candidate in self.COMMON_PASSWORDS:
+                # Check that at least one substitution was actually used
+                    original_slice = password[start:start + length].lower()
+                    has_sub = any(c != d for c, d in zip(original_slice, candidate))
+                    if has_sub:
+                        found_words.append(candidate)
+
+        if found_words:
+            unique_words = list(set(found_words))[:3]  # cap at 3
+            result['leet_speak_found'] = unique_words
+            result['warnings'].append(
+                f"Contains l33t speak substitution(s) forming word(s): {', '.join(unique_words)}"
+            )
+            result['recommendations'].append(
+                "Avoid l33t speak substitutions of common words — "
+                "attackers check these patterns automatically"
+            )
+
+            return result
         
-        return result
     
     def _check_repetition(self, password: str) -> Dict:
         # Check for repeated characters (e.g., "aaabbb", "1111")

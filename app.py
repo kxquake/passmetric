@@ -3,7 +3,7 @@ import os
 import json
 import base64
 
-from flask import Flask, session, request, jsonify, send_from_directory
+from flask import Flask, redirect, session, request, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
@@ -11,6 +11,8 @@ from combinedAnalyzer import CombinedPasswordAnalyzer
 from passGen import PasswordGenerator, PasswordRequirements
 from models import db, User, VaultEntry
 from cryptManager import CryptManager
+from breachChecker import BreachChecker
+from pybloom_live import ScalableBloomFilter
 
 
 app = Flask(
@@ -27,6 +29,8 @@ ph = PasswordHasher()
 
 analyzer = CombinedPasswordAnalyzer()
 generator = PasswordGenerator()
+breach_checker = BreachChecker()
+breach_checker.load_dataset()  # Loads breach dataset on startup
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -78,32 +82,46 @@ def load_user(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized():
-    return jsonify({'error': 'Unauthorized'}), 401
+    # If it's an API request, return JSON
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    # Otherwise redirect to login page
+    return redirect('/')
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json()
     email = data.get('email', '').strip().lower()
     master_password = data.get('master_password', '')
+    check_breaches = data.get('check_breaches', True)  # ← new field
 
     if not email or not master_password:
         return jsonify({'error': 'Email and password are required'}), 400
 
-    # Check if email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Account already exists'}), 409
+
+    # ── Breach check (if enabled) ──
+    if check_breaches and breach_checker.is_loaded:
+        is_breached, breach_msg = breach_checker.is_breached(master_password)
+        if is_breached:
+            return jsonify({
+                'error': 'This password has been found in a known data breach',
+                'breach': True,
+                'breach_message': breach_msg
+            }), 400
     
     # Evaluate master password strength
-    analysis = analyzer.analyze_password(master_password, include_ml=False)
+    analysis = analyzer.analyze_password(master_password)  # include_ml auto
     if analysis['rule_based']['score'] < 30:
         return jsonify({
             'error': 'Master password is too weak',
             'analysis': {
-            'score': analysis['rule_based']['score'],
-            'issues': analysis['rule_based']['issues'],
-            'recommendations': analysis['rule_based']['recommendations']
-                }
-            }), 400
+                'score': analysis['rule_based']['score'],
+                'issues': analysis['rule_based']['issues'],
+                'recommendations': analysis['rule_based']['recommendations']
+            }
+        }), 400
 
     # Hash password for login verification
     password_hash = ph.hash(master_password)
@@ -170,6 +188,7 @@ def login():
 @login_required
 def logout():
     session.pop('vault_key', None)   # Destroy the encryption key
+    session.clear()                 # Clear all session data
     logout_user()
     return jsonify({'message': 'Logged out'}), 200
 
@@ -188,7 +207,15 @@ def analyze_password():
     if not password:
         return jsonify({'error': 'Password is required'}), 400
 
-    analysis = analyzer.analyze_password(password, include_ml=False)
+    analysis = analyzer.analyze_password(password)
+
+    if breach_checker.is_loaded:
+        is_breached, breach_msg = breach_checker.is_breached(password)
+        analysis['breach'] = {
+            'is_breached': is_breached,
+            'message': breach_msg,
+            'dataset_size': breach_checker.total_passwords
+        }
     return jsonify(analysis), 200
 
 @app.route('/api/generate', methods=['POST'])
@@ -231,9 +258,15 @@ def add_entry():
     if not website or not username or not password:
         return jsonify({'error': 'All fields required'}), 400
 
+    # Check if the vault password is breached 
+    breach_warning = None
+    if breach_checker.is_loaded:
+        is_breached, breach_msg = breach_checker.is_breached(password)
+        if is_breached:
+            breach_warning = breach_msg
+
     # Encrypt the password before storing
     encrypted = CryptManager.encrypt_data(password, vault_key)
-
     entry = VaultEntry(
         entry_id=VaultEntry.generate_entry_id(),
         user_id=current_user.id,
@@ -245,7 +278,11 @@ def add_entry():
     db.session.add(entry)
     db.session.commit()
 
-    return jsonify({'message': 'Entry added', 'entry_id': entry.entry_id}), 201
+    response = {'message': 'Entry added', 'entry_id': entry.entry_id}
+    if breach_warning:
+        response['breach_warning'] = breach_warning
+    
+    return jsonify(response), 201
 
 #list vault entries
 @app.route('/api/vault/entries', methods=['GET'])
@@ -377,24 +414,97 @@ def health_audit():
     for entry in entries:
         encrypted = json.loads(entry.encrypted_password)
         password = CryptManager.decrypt_data(encrypted, vault_key)
-        analysis = analyzer.analyze_password(password, include_ml=False)
+        analysis = analyzer.analyze_password(password)  # ML included auto
+
+        # Breach check
+        is_breached = False
+        if breach_checker.is_loaded:
+            is_breached, _ = breach_checker.is_breached(password)
 
         results.append({
             'website': entry.website,
             'username': entry.username,
             'score': analysis['rule_based']['score'],
-            'strength': analysis['combined_strength']
+            'strength': analysis['combined_strength'],
+            'is_breached': is_breached,             # ← new field
+            'ml_prediction': analysis.get('ml_based', {}).get('prediction') if analysis.get('ml_based') else None
         })
 
     avg = sum(r['score'] for r in results) / len(results) if results else 0
     weak = sum(1 for r in results if r['score'] < 40)
+    breached = sum(1 for r in results if r['is_breached'])
 
     return jsonify({
         'average_score': round(avg, 1),
         'total': len(results),
         'weak_count': weak,
+        'breached_count': breached,                 # ← new field
         'entries': results
     })
+
+@app.route('/api/tools/breach-check', methods=['POST'])
+@login_required
+def check_breach():
+    """Check a password against the breach database."""
+    data = request.get_json()
+    password = data.get('password', '')
+
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+
+    if not breach_checker.is_loaded:
+        return jsonify({
+            'error': 'Breach database not available',
+            'is_breached': False
+        }), 503
+
+    is_breached, breach_msg = breach_checker.is_breached(password)
+    return jsonify({
+        'is_breached': is_breached,
+        'message': breach_msg,
+        'dataset_size': breach_checker.total_passwords
+    }), 200
+
+
+@app.route('/api/tools/breach-check-vault', methods=['GET'])
+@login_required
+def check_vault_breaches():
+    """Check ALL vault passwords against the breach database."""
+    vault_key = get_vault_key()
+    if not vault_key:
+        return jsonify({'error': 'Vault locked'}), 403
+
+    if not breach_checker.is_loaded:
+        return jsonify({'error': 'Breach database not available'}), 503
+
+    entries = VaultEntry.query.filter_by(user_id=current_user.id).all()
+    results = []
+    breached_count = 0
+
+    for entry in entries:
+        encrypted = json.loads(entry.encrypted_password)
+        password = CryptManager.decrypt_data(encrypted, vault_key)
+        is_breached, breach_msg = breach_checker.is_breached(password)
+
+        if is_breached:
+            breached_count += 1
+
+        results.append({
+            'entry_id': entry.entry_id,
+            'website': entry.website,
+            'username': entry.username,
+            'is_breached': is_breached,
+        })
+    
+
+    return jsonify({
+        'total': len(results),
+        'breached_count': breached_count,
+        'entries': results,
+        'dataset_size': breach_checker.total_passwords
+    }), 200
+
+
 
 
 
