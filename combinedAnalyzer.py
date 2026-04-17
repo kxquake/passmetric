@@ -1,7 +1,3 @@
-"""
-PassMetric Combined Password Analyzer
-Integrates Password Generator, Evaluator, and ML Classifier
-"""
 
 import numpy as np
 from typing import Dict, List, Tuple, Optional
@@ -18,7 +14,7 @@ from mlclassifier import PasswordMLClassifier
 
 @dataclass
 class CombinedAnalysis:
-    """Complete password analysis combining all methods."""
+
     password_length: int
     rule_based: Dict
     ml_based: Optional[Dict]
@@ -30,7 +26,6 @@ class CombinedAnalysis:
 class CombinedPasswordAnalyzer:
     
     def __init__(self, model_path: str = 'password_ml_model.pkl'):
-        """Initialize all components with auto-loading ML model."""
         self.evaluator = PasswordEvaluator()
         self.generator = PasswordGenerator()
         self.ml_classifier = PasswordMLClassifier()
@@ -39,8 +34,8 @@ class CombinedPasswordAnalyzer:
         self._model_path = model_path
         self._auto_load_ml_model()
 
+# Auto-load the ML model if it exists, otherwise train a new one using the RockYou dataset (if available).
     def _auto_load_ml_model(self):
-        """Load saved model if it exists, otherwise train and save."""
         import os
         if os.path.exists(self._model_path):
             try:
@@ -244,67 +239,3 @@ class CombinedPasswordAnalyzer:
         
         print("\nML classifier trained and ready for use")
 
-
-# Demo and testing
-if __name__ == "__main__":
-    print("="*70)
-    print("  PassMetric Combined Password Analyzer - Demo")
-    print("="*70)
-    print()
-    
-    # Create analyzer
-    analyzer = CombinedPasswordAnalyzer()
-    
-    # Test password analysis
-    print("Testing Password Analysis:")
-    print("-"*70)
-    
-    test_passwords = [
-        "password",
-        "Password123",
-        "P@ssw0rd2024",
-        "Summer2024!",
-        "K#9mX$2pL@7vN!4q",
-        "correcthorsebatterystaple"
-    ]
-    
-    for pwd in test_passwords:
-        analysis = analyzer.analyze_password(pwd, include_ml=False)
-        print(f"\nPassword: {pwd}")
-        print(f"  Strength: {analysis['combined_strength']}")
-        print(f"  Score: {analysis['rule_based']['score']:.1f}/100")
-        print(f"  Entropy: {analysis['rule_based']['entropy_bits']:.1f} bits")
-        if analysis['rule_based']['issues']:
-            print(f"  Issues: {', '.join(analysis['rule_based']['issues'][:2])}")
-    
-    # Test password generation
-    print("\n" + "="*70)
-    print("Testing Password Generation:")
-    print("-"*70)
-    
-    # Generate strong password
-    strong_pwd = analyzer.generate_secure_password()
-    print(f"\nGenerated Password: {strong_pwd}")
-    
-    # Analyze it immediately
-    analysis = analyzer.analyze_password(strong_pwd, include_ml=False)
-    print(f"Strength: {analysis['combined_strength']} ({analysis['rule_based']['score']:.1f}/100)")
-    
-    # Generate passphrase
-    passphrase = analyzer.generate_passphrase(word_count=4)
-    print(f"\nGenerated Passphrase: {passphrase}")
-    
-    # Test suggestions
-    print("\n" + "="*70)
-    print("Testing Password Suggestions:")
-    print("-"*70)
-    
-    weak_password = "password123"
-    suggestions = analyzer.get_password_suggestions(weak_password, count=3)
-    print(f"\nSuggestions for '{weak_password}':")
-    for i, suggestion in enumerate(suggestions, 1):
-        print(f"  {i}. {suggestion}")
-    
-    print("\n" + "="*70)
-    print("✅ Combined Analyzer Demo Complete")
-    print("="*70)

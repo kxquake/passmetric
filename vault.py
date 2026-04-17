@@ -68,11 +68,11 @@ class PasswordVault:
                 print(f"Vault already exists at {self.vault_file}. Please unlock it.")
                 return False
             
-            self.salt = CryptManager.generate_salt()
-            self.key = CryptManager.derive_key(master_password, self.salt)
-            verification_data = CryptManager.encrypt_data("verification", self.key)
+            self.salt = CryptManager.generate_salt() # Generate a new random salt for this vault
+            self.key = CryptManager.derive_key(master_password, self.salt) # Derive the encryption key from the master password and salt
+            verification_data = CryptManager.encrypt_data("verification", self.key) # Create a verification token to confirm correct master password on unlock
 
-            self.entries = []
+            self.entries = [] 
             self.is_unlocked = True
             self.save_vault(verification_data)
 
@@ -86,8 +86,8 @@ class PasswordVault:
             with open(self.vault_file, 'r') as f:
                 vault_data = json.load(f)
             
-            self.salt = base64.b64decode(vault_data['salt'])
-            self.key = CryptManager.derive_key(master_password, self.salt)
+            self.salt = base64.b64decode(vault_data['salt']) # Load the salt from the vault file
+            self.key = CryptManager.derive_key(master_password, self.salt) # Derive the encryption key from the provided master password and loaded salt
 
             if not CryptManager.verify_master_password(master_password, self.salt, vault_data['verification']):
                 print("Incorrect master password.")
@@ -188,62 +188,3 @@ class PasswordVault:
         def vault_exists(self) -> bool:
             return os.path.exists(self.vault_file)
         
-# Test the vault
-if __name__ == "__main__":
-    print("Testing PasswordVault...")
-    
-    # Clean up any existing test vault
-    test_vault_path = "test_vault.enc"
-    if os.path.exists(test_vault_path):
-        os.remove(test_vault_path)
-    
-    # Create new vault
-    vault = PasswordVault(test_vault_path)
-    vault.create_vault("MyMasterPassword123!")
-    print("✓ Vault created")
-    
-    # Add entries
-    entry1 = vault.add_entry("github.com", "jacob@email.com", "GitHubPass123!", "Work account")
-    print(f"✓ Entry added: {entry1.website}")
-    
-    entry2 = vault.add_entry("gmail.com", "jacob@gmail.com", "EmailPass456!", "Personal email")
-    print(f"✓ Entry added: {entry2.website}")
-    
-    # Lock and unlock
-    vault.lock_vault()
-    print("✓ Vault locked")
-    
-    # Test wrong password
-    assert not vault.unlock_vault("WrongPassword")
-    print("✓ Wrong password rejected")
-    
-    # Test correct password
-    assert vault.unlock_vault("MyMasterPassword123!")
-    print("✓ Vault unlocked")
-    
-    # Verify entries persisted
-    entries = vault.get_all_entries()
-    assert len(entries) == 2
-    print(f"✓ {len(entries)} entries retrieved")
-    
-    # Test search
-    results = vault.search_entries("github")
-    assert len(results) == 1
-    assert results[0].website == "github.com"
-    print("✓ Search works")
-    
-   # Test update
-    vault.update_entry(entry1.entry_id, password="NewGitHubPass789!")
-    updated = vault.get_entry(entry1.entry_id)
-    assert updated.password == "NewGitHubPass789!"
-    print("✓ Update works")
-
-    
-    # Test delete
-    vault.delete_entry(entry2.entry_id)
-    assert len(vault.get_all_entries()) == 1
-    print("✓ Delete works")
-    
-    # Clean up
-    os.remove(test_vault_path)
-    print("\n✅ All vault tests passed!")

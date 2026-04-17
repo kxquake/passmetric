@@ -53,7 +53,7 @@ class BreachChecker:
     def is_breached(self, password: str) -> Tuple[bool, Optional[str]]:
         # Check if the given password is in the breach dataset. Returns (found, message).
         if not self._is_loaded:
-            return False, None  # Can't check — dataset not loaded
+            return False, None  
 
         pw_hash = self._hash_password(password)
         found = pw_hash in self._hashed_passwords

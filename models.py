@@ -12,17 +12,24 @@ class User(UserMixin, db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
-
     # Argon2id hash of the master password (for login verification)
     master_password_hash = db.Column(db.String(512), nullable=False)
-
     # Salt for vault encryption key derivation
     vault_salt = db.Column(db.String(64), nullable=False)
-
     # Encrypted verification token (proves derived key is correct)
     vault_verification = db.Column(db.Text, nullable=False)
-
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)        # Null = not locked
+    last_failed_login = db.Column(db.DateTime, nullable=True)
+
+    email_verified = db.Column(db.Boolean, default=False)
+    email_verification_token = db.Column(db.String(128), nullable=True)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+
+    totp_secret = db.Column(db.String(64), nullable=True)       # Null = 2FA not enabled
+    totp_enabled = db.Column(db.Boolean, default=False)
 
     # This tells SQLAlchemy there's a relationship to vault entries
     vault_entries = db.relationship('VaultEntry', backref='owner', lazy=True)

@@ -43,7 +43,6 @@ class PasswordGenerator:
             self.wordlist = self._load_wordlist()
     
         def _load_wordlist(self) -> list[str]:
-            """Load the EFF wordlist from a local file."""
             wordlist_path = os.path.join(os.path.dirname(__file__), 'eff_large_wordlist.txt')
         
             if not os.path.exists(wordlist_path):
@@ -62,7 +61,7 @@ class PasswordGenerator:
             if not is_valid:
                 raise ValueError(f"Invalid password requirements: {error_message}")
             
-            charset = self._build_charset(requirements)
+            charset = self._build_charset(requirements) 
 
             if not charset:
                 raise ValueError("No characters available to generate password based on the specified requirements.")

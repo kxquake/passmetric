@@ -667,13 +667,13 @@
         }
 
         resultsDiv.innerHTML = `
-            <div class="audit-table-header">
+            <div class="breach-table-header">
                 <span>Website</span>
                 <span>Username</span>
                 <span>Status</span>
             </div>
             ${data.entries.map(e => `
-                <div class="audit-row ${e.is_breached ? 'breached' : ''}">
+                <div class="breach-table-row ${e.is_breached ? 'breached' : ''}">
                     <span>${esc(e.website)}</span>
                     <span>${esc(e.username)}</span>
                     <span class="${e.is_breached ? 'text-danger' : 'text-safe'}">

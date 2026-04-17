@@ -1,7 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════
-   PassMetric Dashboard — Styles
-   Aesthetic: dark vault / security terminal — refined & distinctive
-   ═══════════════════════════════════════════════════════════════════════ */
+
 
 /* ─── Variables ─────────────────────────────────────────────────────── */
 :root {
@@ -64,12 +61,6 @@ body { display: flex; }
 ::selection { background: rgba(99,102,241,0.3); color: #fff; }
 
 
-/* ─── Animations ────────────────────────────────────────────────────── */
-@keyframes fadeIn   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes slideUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-@keyframes toastIn  { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) none; } }
-@keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(12px); } }
-@keyframes pulse    { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -503,6 +494,45 @@ body { display: flex; }
 }
 .text-danger { color: #f87171; font-weight: 600; }
 .text-safe   { color: #4ade80; }
+
+
+/* ─── Data Breach scan table (3 columns: Website / Username / Status) ── */
+.breach-table-header, .breach-table-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr;
+    gap: 12px;
+    padding: 14px 20px;
+    align-items: center;
+}
+.breach-table-header {
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+.breach-table-row {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    font-size: 14px;
+}
+.breach-table-row:last-child { border-bottom: none; }
+.breach-table-row.breached {
+    background: rgba(239, 68, 68, 0.05);
+    border-left: 3px solid #ef4444;
+    padding-left: 17px;   /* 20 - 3 to keep content aligned */
+}
+.breach-table-row > span:first-child {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+.breach-table-row > span:nth-child(2) {
+    color: var(--text-muted);
+}
+.breach-table-row > span:last-child {
+    font-weight: 600;
+    font-size: 13px;
+}
 
 
 /* ═══════════════════════════════════════════════════════════════════════

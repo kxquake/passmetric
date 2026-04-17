@@ -107,6 +107,26 @@
 
     
 
+    <!-- ── Bitwarden-style Weak/Exposed Password modal ── -->
+    <div id="weak-pw-modal" class="weak-pw-overlay hidden">
+        <div class="weak-pw-card">
+            <div class="weak-pw-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none"
+                     stroke="#f39c12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+            </div>
+            <h3 id="weak-pw-title">Weak Master Password</h3>
+            <p id="weak-pw-body">Use a strong password to protect your account. Are you sure?</p>
+            <div class="weak-pw-actions">
+                <button id="weak-pw-yes" class="btn btn-primary btn-full">Yes</button>
+                <button id="weak-pw-no" class="btn btn-ghost btn-full">No</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
 </body>

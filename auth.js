@@ -81,7 +81,22 @@ async function handleLogin() {
         await API.post('/auth/login', { email, master_password: password });
         window.location.href = '/dashboard';
     } catch (err) {
-        errorEl.textContent = err.message || 'Login failed. Please check your credentials.';
+        if (err.status === 423) {
+            // Account locked
+            errorEl.textContent = err.data?.error || 'Account temporarily locked.';
+            btn.disabled = true;
+            // Re-enable button after retry period
+            const retryAfter = (err.data?.retry_after_seconds || 60) * 1000;
+            setTimeout(() => { btn.disabled = false; }, retryAfter);
+        } else if (err.status === 429) {
+            errorEl.textContent = 'Too many requests. Please slow down.';
+        } else {
+            let msg = err.data?.error || 'Login failed.';
+            if (err.data?.attempts_remaining !== undefined) {
+                msg += ` (${err.data.attempts_remaining} attempt${err.data.attempts_remaining !== 1 ? 's' : ''} remaining)`;
+            }
+            errorEl.textContent = msg;
+        }
         errorEl.classList.remove('hidden');
     } finally {
         btn.disabled = false;
@@ -91,10 +106,11 @@ async function handleLogin() {
 }
 
 // Register handler
-async function handleRegister() {
+async function handleRegister(confirmWeak = false) {
     const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
     const confirm = document.getElementById('register-confirm').value;
+    const checkBreaches = document.getElementById('register-check-breaches')?.checked ?? true;
     const errorEl = document.getElementById('register-error');
     const btn = document.getElementById('register-btn');
 
@@ -123,12 +139,24 @@ async function handleRegister() {
     btn.querySelector('.btn-loader').classList.remove('hidden');
 
     try {
-        await API.post('/auth/register', { email, master_password: password });
+        await API.post('/auth/register', {
+            email,
+            master_password: password,
+            check_breaches: checkBreaches,
+            confirm_weak: confirmWeak,
+        });
         window.location.href = '/dashboard';
     } catch (err) {
-        const msg = err.data?.analysis
-            ? `${err.message}. ${(err.data.analysis.recommendations || []).join(' ')}`
-            : err.message;
+        // ── Bitwarden-style modal: server says password is weak/breached ──
+        if (err.data?.requires_confirmation) {
+            showWeakPasswordModal(err.data);
+            return;
+        }
+
+        // Any other error — show the message (fall back if response wasn't JSON)
+        const msg = err.data?.error
+            ?? err.message
+            ?? 'Something went wrong. Please try again.';
         errorEl.textContent = msg;
         errorEl.classList.remove('hidden');
     } finally {
@@ -136,6 +164,52 @@ async function handleRegister() {
         btn.querySelector('.btn-text').textContent = 'Create account';
         btn.querySelector('.btn-loader').classList.add('hidden');
     }
+}
+
+// ── Bitwarden-style "Weak and Exposed Master Password" modal ──
+function showWeakPasswordModal(data) {
+    const modal = document.getElementById('weak-pw-modal');
+    const body = document.getElementById('weak-pw-body');
+    const title = document.getElementById('weak-pw-title');
+
+    let titleText = 'Weak Master Password';
+    let bodyText = 'Weak passwords can be easily guessed by attackers. ';
+
+    if (data.is_breached && data.is_weak) {
+        titleText = 'Weak and Exposed Master Password';
+        bodyText = 'Weak password identified and found in a data breach. '
+                 + 'Use a strong and unique password to protect your account. '
+                 + 'Are you sure you want to use this password?';
+    } else if (data.is_breached) {
+        titleText = 'Exposed Master Password';
+        bodyText = 'This password has been found in a known data breach and '
+                 + 'is easy for attackers to guess. Are you sure you want to '
+                 + 'use this password?';
+    } else {
+        bodyText += 'Use a strong and unique password to protect your account. '
+                  + 'Are you sure you want to use this password?';
+    }
+
+    title.textContent = titleText;
+    body.textContent = bodyText;
+    modal.classList.remove('hidden');
+
+    // Rebind buttons each time so stale handlers don't accumulate
+    const yesBtn = document.getElementById('weak-pw-yes');
+    const noBtn = document.getElementById('weak-pw-no');
+    const newYes = yesBtn.cloneNode(true);
+    const newNo = noBtn.cloneNode(true);
+    yesBtn.replaceWith(newYes);
+    noBtn.replaceWith(newNo);
+
+    newYes.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        handleRegister(true);   // ← retry with confirm_weak = true
+    });
+    newNo.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        document.getElementById('register-password').focus();
+    });
 }
 
 // Allow Enter key to submit forms

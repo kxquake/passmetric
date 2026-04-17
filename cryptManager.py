@@ -68,32 +68,3 @@ class CryptManager:
             return True
         except Exception:
             return False
-
-if __name__ == "__main__":
-    print("Testing CryptManager...")
-
-    # Test key derivation
-    password = "MySecurePassword123!"
-    salt = CryptManager.generate_salt()
-    key = CryptManager.derive_key(password, salt)
-    print(f" Key derived (length: {len(key)} bytes)")
-    
-    # Test encryption
-    plaintext = "This is my secret password: P@ssw0rd!"
-    encrypted = CryptManager.encrypt_data(plaintext, key)
-    print(f" Data encrypted (ciphertext length: {len(encrypted['ciphertext'])} chars)")
-    
-    # Test decryption
-    decrypted = CryptManager.decrypt_data(encrypted, key)
-    assert decrypted == plaintext
-    print(f" Data decrypted successfully")
-    
-    # Test password verification
-    assert CryptManager.verify_master_password(password, salt, encrypted)
-    print(f" Password verification works")
-    
-    # Test wrong password
-    assert not CryptManager.verify_master_password("WrongPassword", salt, encrypted)
-    print(f" Wrong password rejected")
-    
-    print("\n All crypto tests passed!")

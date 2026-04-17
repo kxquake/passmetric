@@ -342,45 +342,55 @@ class PasswordEvaluator:
         
         return result
     
-    def _check_leet_speak(self, password: str) -> Dict:#
-        result = {'leet_speak_found': [], 'warnings': [], 'recommendations': []}
+    def _check_leet_speak(self, password: str) -> Dict:
+        result = {
+            'leet_speak_found': [],
+            'warnings': [],
+            'recommendations': [],
+        }
 
-        # Build the "de-l33ted" version of the password
+        if not password:
+            return result
+
+        # Build reverse map: '@' -> 'a', '4' -> 'a', '3' -> 'e', etc.
         reverse_leet = {}
         for char, subs in self.LEET_SPEAK.items():
             for sub in subs:
-             reverse_leet[sub] = char
+                reverse_leet[sub] = char
 
-        de_leeted = ''
-        for ch in password.lower():
-            de_leeted += reverse_leet.get(ch, ch)
+        # Build the "de-l33ted" version of the password
+        de_leeted = ''.join(reverse_leet.get(ch, ch) for ch in password.lower())
 
-    # Only flag if the de-l33ted version contains a dictionary word (4+ chars)
-        found_words = []
-        for length in range(4, len(de_leeted) + 1):
+        # Scan for dictionary words (length 4+) in the de-l33ted version where
+        # at least one character was actually a substitution.
+        found_words = set()
+        max_len = min(len(de_leeted), 12)   # cap to avoid quadratic blowup on long passwords
+        for length in range(4, max_len + 1):
             for start in range(len(de_leeted) - length + 1):
                 candidate = de_leeted[start:start + length]
                 if candidate in common_words or candidate in self.COMMON_PASSWORDS:
-                # Check that at least one substitution was actually used
                     original_slice = password[start:start + length].lower()
-                    has_sub = any(c != d for c, d in zip(original_slice, candidate))
-                    if has_sub:
-                        found_words.append(candidate)
+                    # Require at least one actual substitution in this span
+                    if any(c != d for c, d in zip(original_slice, candidate)):
+                        found_words.add(candidate)
+                        if len(found_words) >= 3:
+                            break
+            if len(found_words) >= 3:
+                break
 
         if found_words:
-            unique_words = list(set(found_words))[:3]  # cap at 3
-            result['leet_speak_found'] = unique_words
+            words_list = sorted(found_words)
+            result['leet_speak_found'] = words_list
             result['warnings'].append(
-                f"Contains l33t speak substitution(s) forming word(s): {', '.join(unique_words)}"
+                f"Contains l33t speak substitution(s) forming word(s): {', '.join(words_list)}"
             )
             result['recommendations'].append(
                 "Avoid l33t speak substitutions of common words — "
                 "attackers check these patterns automatically"
             )
 
-            return result
-        
-    
+        return result
+
     def _check_repetition(self, password: str) -> Dict:
         # Check for repeated characters (e.g., "aaabbb", "1111")
         result = {'repeated_characters': [], 'warnings': []}
@@ -394,25 +404,51 @@ class PasswordEvaluator:
         return result
     
     def _calculate_final_score(self, password: str, entropy: float, diversity: int, issues: List[str], warnings: List[str]) -> Tuple[float, StrengthLevel]:
-        base_score = min(100, (entropy / 128) * 100)  # Normalize entropy to a 0-100 scale (128 bits is considered very strong)
+        # ── FIX: Normalise entropy against 100 bits (not 128) ──
+        # 128 bits is extreme (20-char full-charset). NIST considers 80+ bits "strong".
+        # 100 bits strikes a balance: 12-char all-type passwords score ~80, 16-char score ~100.
+        base_score = min(100, (entropy / 100) * 100)
 
+        # ── FIX: Gentler length curve — bonuses & mild penalties, not 0.6× crushing ──
         length = len(password)
-        if length < 8:
-            base_score *= 0.3
+        if length < 6:
+            base_score *= 0.25       # dangerously short
+        elif length < 8:
+            base_score *= 0.50       # too short for any real use
+        elif length < 10:
+            base_score *= 0.80       # acceptable but short
         elif length < 12:
-            base_score *= 0.6
+            base_score *= 0.90       # decent length
         elif length < 16:
-            base_score *= 1.1
-        
+            base_score *= 1.0        # good length (neutral)
+        else:
+            base_score *= 1.05       # bonus for 16+
+
+        # ── FIX: Reward character type diversity ──
+        # A 10-char password with all 4 types IS strong; the old code didn't credit this.
+        types_count = sum([
+            any(c.islower() for c in password),
+            any(c.isupper() for c in password),
+            any(c.isdigit() for c in password),
+            any(c in string.punctuation for c in password),
+        ])
+        if types_count == 4:
+            base_score = min(100, base_score * 1.10)
+        elif types_count <= 1:
+            base_score *= 0.6
+
+        # Diversity ratio (unchanged)
         diversity_ratio = diversity / len(password) if len(password) > 0 else 0
         if diversity_ratio < 0.5:
-            base_score *= 0.8
+            base_score *= 0.75
         elif diversity_ratio > 0.8:
             base_score *= 1.05
 
-        penalty = len(issues) * 20 + len(warnings) * 5
+        # ── FIX: Reduced per-warning penalty (3 instead of 5) ──
+        # The old formula double-penalised: length<12 got ×0.6 AND a length warning (−5).
+        # Now length is handled by the multiplier alone; warnings are for pattern issues.
+        penalty = len(issues) * 15 + len(warnings) * 3
         final_score = max(0, base_score - penalty)
-
         final_score = min(100, final_score)
 
         # Determine strength level based on final score
